@@ -1,10 +1,7 @@
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.LinearProgressIndicator
@@ -53,7 +50,7 @@ fun FindResult(uiState: UiState.Find) {
 
 @Composable
 fun FileResultRow(row: FileRow) {
-    Row {
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         CellText(row.id.toString(), Modifier.width(100.dp))
         CellText(row.filename, Modifier.width(200.dp))
         CellText(row.tag ?: "", Modifier.width(200.dp))
@@ -65,7 +62,7 @@ fun FileResultRow(row: FileRow) {
 
 @Composable
 fun FileResultHeader() {
-    Row {
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         CellText("Id", Modifier.width(100.dp))
         CellText("Filename", Modifier.width(200.dp))
         CellText("Tag", Modifier.width(200.dp))
@@ -82,6 +79,8 @@ fun CellText(content: String, modifier: Modifier) {
         modifier = modifier
             .background(Color.White)
             .border(1.dp, Color.Cyan)
+            .padding(8.dp)
+            .fillMaxHeight()
     ) {
         Text(text = content)
     }
