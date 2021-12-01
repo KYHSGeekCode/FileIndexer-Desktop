@@ -1,3 +1,4 @@
+import com.google.api.services.drive.Drive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
@@ -15,6 +16,7 @@ data class FileRow(
 )
 
 class ViewModel {
+
     val con: Connection
     val exactSearch: PreparedStatement
 //    val patternSearch: PreparedStatement
@@ -57,7 +59,7 @@ class ViewModel {
     }
 
     fun fetch() {
-        TODO("Not yet implemented")
+//        DriveHelper.doDo()
     }
 
     fun index(path: String) {
@@ -110,6 +112,53 @@ class ViewModel {
         con.close()
     }
 
+    fun loginGoogleDrive(userId: String) {
+        val drive = DriveHelper.login(userId)
+        _currentAccount.value = drive.About().get().setFields("user").execute().user.emailAddress
+        this.drive = drive
+    }
+
+    fun logoutGoogleDrive() {
+        DriveHelper.logout()
+        drive = null
+        _currentAccount.value = null
+    }
+
+    fun indexGoogleDrive() {
+        drive?.let {
+            Thread {
+                val addIndex =
+                    con.prepareStatement("INSERT INTO files(filename, tag, major_drive, minor_drive, path) VALUES (?, ?, ?, ?, ?)")
+                val major_drive = "Drive"
+                val minor_drive = currentAccount.value
+                DriveHelper.indexFiles(it, onFileFound = { file ->
+                    addIndex.setString(1, file.name)
+                    addIndex.setString(2, "")
+                    addIndex.setString(3, major_drive)
+                    addIndex.setString(4, minor_drive)
+                    addIndex.setString(5, file.webViewLink)
+                    addIndex.addBatch()
+                }) { total, current ->
+                    val pcnt = current.toFloat() / total
+                    println("Total: $total, current: $current, pcnt: $pcnt")
+                    _currentProgress.value = pcnt
+                    true
+                }
+                addIndex.clearParameters()
+                addIndex.executeBatch()
+                addIndex.close()
+            }.start()
+        }
+    }
+
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState = _uiState as StateFlow<UiState>
+
+    private val _currentAccount = MutableStateFlow<String?>(null)
+    val currentAccount = _currentAccount as StateFlow<String?>
+
+    private var drive: Drive? = null
+
+    private val _currentProgress = MutableStateFlow(0.0f)
+    val currentProgress = _currentProgress as StateFlow<Float>
 }

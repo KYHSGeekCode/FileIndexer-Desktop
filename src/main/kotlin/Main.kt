@@ -1,10 +1,7 @@
 // Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,12 +26,40 @@ fun main() = application {
                     // 인덱스를 실행함
                     viewModel.index(path)
                 }
+                DriveInput(viewModel)
                 CommandInput("Upload") {
                     //
                     viewModel.upload()
                 }
                 ResultView(viewModel)
             }
+        }
+    }
+}
+
+@Composable
+fun DriveInput(viewModel: ViewModel) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        val currentProgress = viewModel.currentProgress.collectAsState()
+        Row(modifier = Modifier.fillMaxWidth()) {
+            val currentAccount = viewModel.currentAccount.collectAsState()
+            if (currentAccount.value == null) {
+                Button({ viewModel.loginGoogleDrive("user") }) {
+                    Text("Login drive")
+                }
+            } else {
+                Button({ viewModel.logoutGoogleDrive() }) {
+                    Text("Logout drive")
+                }
+            }
+            Text("Account: ${currentAccount.value}")
+            Button({ viewModel.indexGoogleDrive() }) {
+                Text("Index")
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            LinearProgressIndicator(progress = currentProgress.value, modifier = Modifier.weight(1.0f))
+            Text("${currentProgress.value * 100}%")
         }
     }
 }
