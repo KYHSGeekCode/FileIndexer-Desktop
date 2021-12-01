@@ -16,6 +16,8 @@ data class FileRow(
 )
 
 class ViewModel {
+    val DBPath = "${System.getProperty("user.home")}/fileindex.sqlite"
+    val DBFile = File(DBPath)
 
     val con: Connection
     val exactSearch: PreparedStatement
@@ -23,7 +25,7 @@ class ViewModel {
 
     init {
         Class.forName("org.sqlite.JDBC")
-        con = DriverManager.getConnection("jdbc:sqlite:/Users/yanghyeonseo/fileindex.sqlite")
+        con = DriverManager.getConnection("jdbc:sqlite:$DBPath")
         print(con.isClosed)
         exactSearch = con.prepareStatement("SELECT * FROM files WHERE filename = ?")
 //        patternSearch = con.prepareStatement("SELECT * FROM files WHERE filename LIKE ?;")
@@ -59,7 +61,9 @@ class ViewModel {
     }
 
     fun fetch() {
-//        DriveHelper.doDo()
+        drive?.let {
+            DriveHelper.downloadDB(it, DBFile)
+        }
     }
 
     fun index(path: String) {
@@ -105,7 +109,9 @@ class ViewModel {
     }
 
     fun upload() {
-        TODO("Not yet implemented")
+        drive?.let {
+            DriveHelper.uploadDB(it, DBFile)
+        }
     }
 
     fun close() {

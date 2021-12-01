@@ -5,12 +5,14 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.http.FileContent
 import com.google.api.client.json.JsonFactory
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.File
+import com.google.api.services.drive.model.FileList
 import java.io.*
 
 
@@ -58,7 +60,11 @@ object DriveHelper {
         do {
             val result = service.files().list()
                 .setFields("nextPageToken, files(id, name, size, webViewLink)")
-                .setQ("mimeType != 'application/vnd.google-apps.folder' and mimeType != 'application/vnd.google-apps.shortcut'") // application/vnd.google-apps.shortcut
+                .setQ(
+                    "mimeType != 'application/vnd.google-apps.folder' " +
+                            "and mimeType != 'application/vnd.google-apps.shortcut' " +
+                            "and not 'appDataFolder' in parents"
+                ) // application/vnd.google-apps.shortcut
                 .setPageToken(pageToken)
                 .execute()
             val files: List<File>? = result.files
@@ -83,4 +89,33 @@ object DriveHelper {
         Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(userId))
             .setApplicationName(APPLICATION_NAME)
             .build()
+
+    fun uploadDB(service: Drive, dbFile: java.io.File) {
+        val fileMetadata = File()
+        fileMetadata.name = "fileindex.sqlite"
+        fileMetadata.parents = listOf("appDataFolder")
+        val mediaContent = FileContent("application/vnd.sqlite3", dbFile)
+        val file: File = service.files().create(fileMetadata, mediaContent)
+            .setFields("id")
+            .execute()
+        println("File ID: " + file.id)
+    }
+
+    fun downloadDB(service: Drive, downloadTo: java.io.File) {
+        val files: FileList = service.files().list()
+            .setSpaces("appDataFolder")
+            .setFields("nextPageToken, files(id, name)")
+            .setQ("name = 'fileindex.sqlite'")
+            .setPageSize(10)
+            .execute()
+        for (file in files.files) {
+            System.out.printf(
+                "Found file: %s (%s)\n",
+                file.name, file.id
+            )
+            val outputStream: OutputStream = FileOutputStream(downloadTo)
+            service.files().get(file.id).executeMediaAndDownloadTo(outputStream)
+            break
+        }
+    }
 }

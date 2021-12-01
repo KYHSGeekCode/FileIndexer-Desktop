@@ -18,18 +18,20 @@ fun main() = application {
                     // sqlite db에서 읽어서 잘 보여줌
                     viewModel.find(query)
                 }
-                CommandInput("Fetch") { _ ->
-                    // 드라이브에서 다운로드
-                    viewModel.fetch()
-                }
                 CommandInput("Index") { path ->
                     // 인덱스를 실행함
                     viewModel.index(path)
                 }
                 DriveInput(viewModel)
-                CommandInput("Upload") {
-                    //
-                    viewModel.upload()
+                Row {
+                    Button({ viewModel.fetch() }) {
+                        // 드라이브에서 다운로드
+                        Text("Fetch DB from drive")
+                    }
+                    Button({ viewModel.upload() }) {
+                        //
+                        Text("Upload DB to drive")
+                    }
                 }
                 ResultView(viewModel)
             }
@@ -52,7 +54,7 @@ fun DriveInput(viewModel: ViewModel) {
                     Text("Logout drive")
                 }
             }
-            Text("Account: ${currentAccount.value}")
+            Text("Account: ${currentAccount.value}", modifier = Modifier.weight(1.0f).padding(10.dp))
             Button({ viewModel.indexGoogleDrive() }) {
                 Text("Index")
             }
