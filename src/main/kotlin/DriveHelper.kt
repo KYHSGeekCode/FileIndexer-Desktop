@@ -8,6 +8,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.http.FileContent
 import com.google.api.client.json.JsonFactory
 import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.client.util.DateTime
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
@@ -17,7 +18,7 @@ import java.io.*
 
 
 object DriveHelper {
-    private val SCOPES = listOf(DriveScopes.DRIVE_METADATA_READONLY)
+    private val SCOPES = listOf(DriveScopes.DRIVE_METADATA_READONLY, DriveScopes.DRIVE_APPDATA)
     private const val CREDENTIALS_FILE_PATH = "/credentials.json"
     private const val APPLICATION_NAME = "File Indexer"
     private val JSON_FACTORY: JsonFactory = JacksonFactory.getDefaultInstance()
@@ -90,7 +91,7 @@ object DriveHelper {
             .setApplicationName(APPLICATION_NAME)
             .build()
 
-    fun uploadDB(service: Drive, dbFile: java.io.File) {
+    fun uploadDB(service: Drive, dbFile: java.io.File): String {
         val fileMetadata = File()
         fileMetadata.name = "fileindex.sqlite"
         fileMetadata.parents = listOf("appDataFolder")
@@ -99,12 +100,13 @@ object DriveHelper {
             .setFields("id")
             .execute()
         println("File ID: " + file.id)
+        return file.id
     }
 
-    fun downloadDB(service: Drive, downloadTo: java.io.File) {
+    fun downloadDB(service: Drive, downloadTo: java.io.File): DateTime? {
         val files: FileList = service.files().list()
             .setSpaces("appDataFolder")
-            .setFields("nextPageToken, files(id, name)")
+            .setFields("nextPageToken, files(id, name, modifiedTime)")
             .setQ("name = 'fileindex.sqlite'")
             .setPageSize(10)
             .execute()
@@ -115,7 +117,13 @@ object DriveHelper {
             )
             val outputStream: OutputStream = FileOutputStream(downloadTo)
             service.files().get(file.id).executeMediaAndDownloadTo(outputStream)
-            break
+            return file.modifiedTime
         }
+        return null
+    }
+
+    fun isSilentLoginAvailable(): Boolean {
+        val tokenDir = File(TOKENS_DIRECTORY_PATH)
+        return tokenDir.exists() && tokenDir.isDirectory && !tokenDir.listFiles().isNullOrEmpty()
     }
 }

@@ -19,9 +19,9 @@ repositories {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation("org.xerial:sqlite-jdbc:3.36.0.3")
-    implementation("com.google.api-client:google-api-client:1.23.0")
-    implementation("com.google.oauth-client:google-oauth-client-jetty:1.23.0")
-    implementation("com.google.apis:google-api-services-drive:v3-rev110-1.23.0")
+    implementation("com.google.api-client:google-api-client:1.25.0")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.25.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev197-1.25.0")
 }
 
 tasks.withType<KotlinCompile>() {

@@ -18,11 +18,8 @@ fun ResultView(viewModel: ViewModel) {
     when (uiState) {
         is UiState.Idle -> Text("Nothing in progress")
         is UiState.Find -> FindResult(uiState) // progress, table
-        is UiState.Fetch -> {
-        } // progress
-        is UiState.Upload -> {
-        } // progress
         is UiState.Loading -> LoadingView(uiState)
+        is UiState.Error -> Text(uiState.message)
     }
 }
 

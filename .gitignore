@@ -142,3 +142,4 @@ tokens/
 .DS_Store
 ._*
 credentials.json
+*.sqlite
