@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.sql.PreparedStatement
 
 data class FileRow(
     val id: Int,
@@ -16,17 +15,19 @@ data class FileRow(
     val path: String?
 )
 
-class ViewModel(val viewModelScope: CoroutineScope) {
+class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
 
     val defaultUserId = "user"
-    val dbManager = DBManager()
-//    val patternSearch: PreparedStatement
 
     fun find(query: String) {
         if (query.length > 1) {
             _uiState.value = UiState.Loading()
-            val resultList = dbManager.find(query)
-            _uiState.value = UiState.Find(query, resultList)
+            try {
+                val resultList = dbManager.find(query)
+                _uiState.value = UiState.Find(query, resultList)
+            } catch (e: Exception) {
+                _uiState.value = UiState.Error("Error: ${e.stackTraceToString()}")
+            }
         } else {
             _uiState.value = UiState.Error("Please enter query with length > 1")
         }
@@ -40,17 +41,16 @@ class ViewModel(val viewModelScope: CoroutineScope) {
 
     fun index(major_drive: String, path: String) {
         _uiState.value = UiState.Loading()
-        val addIndex = dbManager.beginIndex()
+        dbManager.beginIndex()
         val minor_drive = ""
         val root = File(path)
-        indexFiles(root, addIndex, major_drive, minor_drive)
-        dbManager.finishIndex(addIndex)
+        indexFiles(root, major_drive, minor_drive)
+        dbManager.finishIndex()
         _uiState.value = UiState.Idle
     }
 
     private fun indexFiles(
         root: File,
-        addIndex: PreparedStatement,
         major_drive: String,
         minor_drive: String
     ) {
@@ -61,15 +61,12 @@ class ViewModel(val viewModelScope: CoroutineScope) {
             for (file in list) {
                 val fileName = file.name
                 val path = file.canonicalPath
-                addIndex.setString(1, fileName)
-                addIndex.setString(2, "")
-                addIndex.setString(3, major_drive)
-                addIndex.setString(4, minor_drive)
-                addIndex.setString(5, path)
-                addIndex.addBatch()
+                val record = RecordModel(fileName, "", major_drive, minor_drive, path)
+                dbManager.addRecord(record)
+
                 if (!isIgnoreSub && file.isDirectory) {
                     _uiState.value = UiState.Loading(0.0f, "Indexing ${file.path}")
-                    indexFiles(file, addIndex, major_drive, minor_drive)
+                    indexFiles(file, major_drive, minor_drive)
                 }
             }
         }
@@ -106,19 +103,16 @@ class ViewModel(val viewModelScope: CoroutineScope) {
                 val major_drive = "Drive"
                 val minor_drive = currentAccount.value
                 DriveHelper.indexFiles(this, onFileFound = { file ->
-                    addIndex.setString(1, file.name)
-                    addIndex.setString(2, "")
-                    addIndex.setString(3, major_drive)
-                    addIndex.setString(4, minor_drive)
-                    addIndex.setString(5, file.webViewLink)
-                    addIndex.addBatch()
+                    dbManager.addRecord(
+                        RecordModel(file.name, "", major_drive, minor_drive ?: "", file.webViewLink)
+                    )
                 }) { total, current ->
                     val pcnt = current.toFloat() / total
                     println("Total: $total, current: $current, pcnt: $pcnt")
                     _currentProgress.value = pcnt
                     true
                 }
-                dbManager.finishIndex(addIndex)
+                dbManager.finishIndex()
             }.start()
         }
     }

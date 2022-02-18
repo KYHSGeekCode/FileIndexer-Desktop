@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 @ExperimentalComposeUiApi
 fun main() = application {
     val coroutineScope = rememberCoroutineScope()
-    val viewModel = remember { ViewModel(coroutineScope) }
+    val viewModel = remember { ViewModel(coroutineScope, SQLiteDBManager()) }
     coroutineScope.launch(Dispatchers.IO) {
         viewModel.silentLogin()?.join()
         viewModel.trySyncDB()
