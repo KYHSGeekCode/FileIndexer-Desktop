@@ -21,13 +21,18 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.toxicbakery.logging.Arbor
+import com.toxicbakery.logging.Seedling
+import dbmanager.ServerDBManager
+import firestore.api.FileIndexerRestApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @ExperimentalComposeUiApi
 fun main() = application {
+    Arbor.sow(Seedling())
     val coroutineScope = rememberCoroutineScope()
-    val viewModel = remember { ViewModel(coroutineScope, SQLiteDBManager()) }
+    val viewModel = remember { ViewModel(coroutineScope, ServerDBManager(FileIndexerRestApi.retrofitService)) }
     coroutineScope.launch(Dispatchers.IO) {
         viewModel.silentLogin()?.join()
         viewModel.trySyncDB()
@@ -38,6 +43,7 @@ fun main() = application {
                 modifier = Modifier.fillMaxWidth().padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                LoginInput(viewModel)
                 FindInput(viewModel)
                 IndexInput(viewModel)
                 DriveInput(viewModel)
@@ -69,6 +75,42 @@ fun SyncRow(viewModel: ViewModel) {
                         "Latest sync date: ${syncStatus.date}"
             )
             SyncState.Loading -> Text("In progress")
+        }
+    }
+}
+
+@ExperimentalComposeUiApi
+@Composable
+fun LoginInput(viewModel: ViewModel) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Column {
+            FancyTextField(
+                value = username,
+                label = "username",
+                icon = Icons.Filled.Delete,
+                modifier = Modifier.weight(1f),
+                onValueChange = { username = it },
+                onIconClick = { username = "" }
+            )
+            FancyTextField(
+                value = password,
+                label = "password",
+                icon = Icons.Filled.Delete,
+                modifier = Modifier.weight(1f),
+                onValueChange = { password = it },
+                onIconClick = { password = "" }
+            )
+        }
+        Button({
+            viewModel.login(username, password)
+        }, modifier = Modifier.fillMaxHeight()) {
+            Text("Login")
         }
     }
 }
@@ -185,7 +227,7 @@ fun FancyTextField(
             })
         },
 
-        modifier = modifier.fillMaxHeight().background(Color.White).padding(4.dp).onKeyEvent {
+        modifier = modifier.background(Color.White).padding(4.dp).onKeyEvent {
             if (it.key.nativeKeyCode == Key.Enter.nativeKeyCode) {
                 onEnterPress()
                 return@onKeyEvent true

@@ -1,5 +1,12 @@
+package dbmanager
+
+import DriveHelper
+import FileRow
+import RecordModel
+import SyncState
 import com.google.api.client.util.DateTime
 import com.google.api.services.drive.Drive
+import kotlinx.coroutines.Job
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
@@ -14,6 +21,8 @@ class SQLiteDBManager : DBManager {
     val TMP_DB_PATH = "tmpdb.sqlite"
     val TMP_DB_FILE = File(TMP_DB_PATH)
 
+    private lateinit var drive: Drive
+
     private val con: Connection
 
     var insertStatement: PreparedStatement? = null
@@ -23,7 +32,15 @@ class SQLiteDBManager : DBManager {
         con = DriverManager.getConnection("jdbc:sqlite:$DBPath")
     }
 
-    override fun find(query: String): List<FileRow> {
+    override suspend fun login(username: String, password: String) {
+
+    }
+
+    override fun trySilentLogin(): Job? {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun find(query: String): List<FileRow> {
         val patternSearch = con.prepareStatement("SELECT * FROM files WHERE filename LIKE ?;")
         patternSearch.setString(1, "%$query%")
         patternSearch.execute()
@@ -51,7 +68,7 @@ class SQLiteDBManager : DBManager {
         return resultList
     }
 
-    override fun syncDB(drive: Drive): SyncState {
+    override suspend fun syncDB(): SyncState {
         initDBIfNot()
         val merged: Boolean
         val shouldUpload: Boolean
@@ -128,7 +145,7 @@ class SQLiteDBManager : DBManager {
         }
     }
 
-    override fun finishIndex() {
+    override suspend fun finishIndex() {
         require(insertStatement != null) {
             print("You should call beginIndex() first")
         }

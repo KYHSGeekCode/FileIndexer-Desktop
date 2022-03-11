@@ -1,5 +1,9 @@
+import dbmanager.DBManager
 import com.google.api.services.drive.Drive
+import com.toxicbakery.logging.Arbor
+import firestore.api.authToken
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,17 +20,19 @@ data class FileRow(
 )
 
 class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
-
+    private var drive: Drive? = null
     val defaultUserId = "user"
 
     fun find(query: String) {
         if (query.length > 1) {
-            _uiState.value = UiState.Loading()
-            try {
-                val resultList = dbManager.find(query)
-                _uiState.value = UiState.Find(query, resultList)
-            } catch (e: Exception) {
-                _uiState.value = UiState.Error("Error: ${e.stackTraceToString()}")
+            viewModelScope.launch(Dispatchers.IO) {
+                _uiState.value = UiState.Loading()
+                try {
+                    val resultList = dbManager.find(query)
+                    _uiState.value = UiState.Find(query, resultList)
+                } catch (e: Exception) {
+                    _uiState.value = UiState.Error("Error: ${e.stackTraceToString()}")
+                }
             }
         } else {
             _uiState.value = UiState.Error("Please enter query with length > 1")
@@ -40,13 +46,15 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
 //    }
 
     fun index(major_drive: String, path: String) {
-        _uiState.value = UiState.Loading()
-        dbManager.beginIndex()
-        val minor_drive = ""
-        val root = File(path)
-        indexFiles(root, major_drive, minor_drive)
-        dbManager.finishIndex()
-        _uiState.value = UiState.Idle
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = UiState.Loading()
+            dbManager.beginIndex()
+            val minor_drive = ""
+            val root = File(path)
+            indexFiles(root, major_drive, minor_drive)
+            dbManager.finishIndex()
+            _uiState.value = UiState.Idle
+        }
     }
 
     private fun indexFiles(
@@ -98,11 +106,11 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
 
     fun indexGoogleDrive() {
         drive?.apply {
-            Thread {
-                val addIndex = dbManager.beginIndex()
+            viewModelScope.launch(Dispatchers.IO) {
+                dbManager.beginIndex()
                 val major_drive = "Drive"
                 val minor_drive = currentAccount.value
-                DriveHelper.indexFiles(this, onFileFound = { file ->
+                DriveHelper.indexFiles(this@apply, onFileFound = { file ->
                     dbManager.addRecord(
                         RecordModel(file.name, "", major_drive, minor_drive ?: "", file.webViewLink)
                     )
@@ -113,15 +121,12 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
                     true
                 }
                 dbManager.finishIndex()
-            }.start()
+            }
         }
     }
 
-    suspend fun silentLogin(): Job? {
-        if (DriveHelper.isSilentLoginAvailable()) {
-            return loginGoogleDrive()
-        }
-        return null
+    fun silentLogin(): Job? {
+        return dbManager.trySilentLogin()
     }
 
     // try downloading db from drive.
@@ -130,9 +135,17 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
     // if not using remote, upload local to drive.
     // TODO: lock/synchronize
     fun trySyncDB() {
-        drive?.apply {
+        viewModelScope.launch(Dispatchers.IO) {
             _syncState.value = SyncState.Loading
-            _syncState.value = dbManager.syncDB(this@apply)
+            _syncState.value = dbManager.syncDB()
+            _syncState.value = SyncState.None
+        }
+    }
+
+    fun login(username: String, password: String) {
+        viewModelScope.launch {
+            dbManager.login(username, password)
+            Arbor.e("Login success $authToken")
         }
     }
 
@@ -142,12 +155,9 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
     private val _currentAccount = MutableStateFlow<String?>(null)
     val currentAccount = _currentAccount as StateFlow<String?>
 
-    private var drive: Drive? = null
-
     private val _currentProgress = MutableStateFlow(0.0f)
     val currentProgress = _currentProgress as StateFlow<Float>
 
     private val _syncState = MutableStateFlow<SyncState>(SyncState.None)
     val syncState = _syncState as StateFlow<SyncState>
-
 }
