@@ -51,7 +51,7 @@ interface ApiService {
     suspend fun postRecord(@Body record: Record): RecordParsed // With nlp_parsed array
 
     @POST("records/")
-    suspend fun postRecords(@Body records: List<Record>): List<RecordParsed> // With nlp_parsed array
+    suspend fun postRecords(@Body records: List<Record>) //: List<RecordParsed> // With nlp_parsed array
 
     @GET("record/")
     suspend fun search(@Query("query") query: String): List<Record>
