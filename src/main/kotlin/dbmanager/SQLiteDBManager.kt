@@ -32,8 +32,8 @@ class SQLiteDBManager : DBManager {
         con = DriverManager.getConnection("jdbc:sqlite:$DBPath")
     }
 
-    override suspend fun login(username: String, password: String) {
-
+    override suspend fun login(username: String, password: String): Int {
+        return 404
     }
 
     override fun trySilentLogin(): Job? {

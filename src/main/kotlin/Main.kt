@@ -25,6 +25,7 @@ import com.toxicbakery.logging.Arbor
 import com.toxicbakery.logging.Seedling
 import dbmanager.ServerDBManager
 import firestore.api.FileIndexerRestApi
+import firestore.api.authToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -112,6 +113,7 @@ fun LoginInput(viewModel: ViewModel) {
         }, modifier = Modifier.fillMaxHeight()) {
             Text("Login")
         }
+        Text(text = viewModel.loginStatus.toString())
     }
 }
 

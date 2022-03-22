@@ -1,3 +1,6 @@
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import dbmanager.DBManager
 import com.google.api.services.drive.Drive
 import com.toxicbakery.logging.Arbor
@@ -18,6 +21,13 @@ data class FileRow(
     val minor_drive: String?,
     val path: String?
 )
+
+sealed class LoginStatus {
+    object None : LoginStatus()
+    object Trying : LoginStatus()
+    data class Success(val authToken: String) : LoginStatus()
+    data class Fail(val code: Int) : LoginStatus()
+}
 
 class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
     private var drive: Drive? = null
@@ -144,8 +154,14 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
 
     fun login(username: String, password: String) {
         viewModelScope.launch {
-            dbManager.login(username, password)
-            Arbor.e("Login success $authToken")
+            loginStatus = LoginStatus.Trying
+            val result = dbManager.login(username, password)
+            loginStatus = if (result / 100 != 2) {
+                LoginStatus.Fail(result)
+            } else {
+                Arbor.e("Login success $authToken")
+                LoginStatus.Success(authToken)
+            }
         }
     }
 
@@ -160,4 +176,7 @@ class ViewModel(val viewModelScope: CoroutineScope, val dbManager: DBManager) {
 
     private val _syncState = MutableStateFlow<SyncState>(SyncState.None)
     val syncState = _syncState as StateFlow<SyncState>
+
+    var loginStatus by mutableStateOf<LoginStatus>(LoginStatus.None)
+        private set
 }

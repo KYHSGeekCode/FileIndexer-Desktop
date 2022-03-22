@@ -6,7 +6,7 @@ import SyncState
 import kotlinx.coroutines.Job
 
 interface DBManager {
-    suspend fun login(username: String, password: String)
+    suspend fun login(username: String, password: String): Int
     fun trySilentLogin(): Job?
     suspend fun find(query: String): List<FileRow>
     suspend fun syncDB(): SyncState

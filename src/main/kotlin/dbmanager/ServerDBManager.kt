@@ -20,8 +20,8 @@ class ServerDBManager(private val apiService: ApiService) : DBManager {
 
     private var managerState: ManagerState = ManagerState.Clean
     val recordsToAdd = mutableListOf<Record>()
-    override suspend fun login(username: String, password: String) {
-        FileIndexerRestApi.login(username, password)
+    override suspend fun login(username: String, password: String) : Int {
+        return FileIndexerRestApi.login(username, password)
     }
 
     override fun trySilentLogin(): Job? {
